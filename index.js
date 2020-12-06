@@ -50,9 +50,7 @@ async function initiateLiftSystem() {
     await Promise.all(Promises)
 }
 
-// function allotlift()
-
-function createDataStructure(p, d, floorwise_situation, passenger_id) {
+function createFloorDS(p, d, floorwise_situation, passenger_id) {
     if (floorwise_situation[p] === undefined) {
         floorwise_situation[p] = { "up": {}, "down": {} };
     }
@@ -66,23 +64,37 @@ function createDataStructure(p, d, floorwise_situation, passenger_id) {
         floorwise_situation[p]["down"][d].push(passenger_id);
     }
 }
+function groupPassengers(state, floorwise_situation) {
 
-function scheduleJobs(state) {
-    let jobsQueue = state['passenger'];
-    let floorwise_situation = {}
-
-
-
-    //grouping
-    jobsQueue.forEach((job) => {
+    state.forEach((job) => {
         let d = job["goto_level"];
         let p = job["at_level"];
-        createDataStructure(p, d, floorwise_situation, job["id"]);
-
+        createFloorDS(p, d, floorwise_situation, job["id"]);
     }
     )
-    console.log(floorwise_situation[1]["up"])
-    // console.log(floorwise_situation);
+}
+
+
+function createLiftDS(lift, lifts_situation) {
+    lifts_situation[lift['id']] = lift['at_level'];
+}
+// function allotLift()
+function scheduleJobs(state) {
+
+    let floorwise_situation = {}
+    let lifts_situation = {}
+
+
+
+    //grouping - to add childern clasue here
+    groupPassengers(state['passenger'], floorwise_situation);
+
+
+    // create lift ds
+    state['lift'].forEach((lift) => createLiftDS(lift, lifts_situation))
+
+    // Allot Lift
+    console.log(floorwise_situation);
 
 }
 async function run() {
