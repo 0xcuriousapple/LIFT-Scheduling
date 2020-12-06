@@ -1,0 +1,20 @@
+{
+    "conditions": {
+        "any": [
+            {
+                "all": [
+                    {
+                        "fact": "isChildern",
+                        "operator": "lesserThanInclusive",
+                        "value": 12
+                    }
+                ]
+            }
+        ]
+    },
+    "event": {
+        "params": {
+            "result": true
+        }
+    }
+}
