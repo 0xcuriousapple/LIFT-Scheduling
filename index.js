@@ -12,7 +12,7 @@ const MAX_CAPACITY = 3;
 const MAX_LEVEL = 25;
 const MIN_LEVEL = 1;
 
-let states = [];
+let states = {};
 let passengersData = [];
 const readFile = util.promisify(fs.readFile);
 const readdir = util.promisify(fs.readdir);
@@ -22,6 +22,18 @@ const readdir = util.promisify(fs.readdir);
 
 let Instructions = {}
 let Intent = {}
+// let Childern = {
+
+//     'id': {
+//         mappedParent:
+//             inpath :
+//         parentStart:
+//             parentDestination :
+//     }
+
+// }
+
+
 // To get all data ready so we dont process it again and again
 async function initiateLiftSystem() {
 
@@ -31,8 +43,8 @@ async function initiateLiftSystem() {
     let filenames = await readdir(pathToStates);
     filenames.forEach((filename) => {
         Promises.push(new Promise((resolve, reject) => {
-            readFile(pathToStates + "/" + 'state_9.hcl', 'utf-8').then((state, error) => {
-                states.push(HCL.parse(state));
+            readFile(pathToStates + "/" + filename, 'utf-8').then((state, error) => {
+                states[filename.slice(0, -4)] = HCL.parse(state);
                 resolve();
             })
         }))
@@ -239,7 +251,16 @@ function movelift(levelwise_situation, lift_id, lifts_pos, movement, dir, load) 
 }
 
 function delegateWork(prev_one, lifts_pos) {
-    return (prev_one + 1) % (Object.size(lifts_pos) + 1);
+
+    let t = (prev_one + 1) % (Object.size(lifts_pos) + 1);
+
+    if (t == 0) {
+        return 1;
+    }
+    else {
+        return t;
+    }
+
 }
 
 
@@ -278,11 +299,8 @@ function scheduleJobs(state) {
 
     for (lift_id in lifts_pos) {
         if (lifts_pos[lift_id] != 1) { goToGround(lift_id) }
+        if (Instructions[lift_id][Instructions[lift_id].length - 1] == "GO DOWN") { Instructions[lift_id].push('STOP 1') }
     }
-    output();
-    Instructions = {};
-    Intent = {}
-
 }
 
 
@@ -300,16 +318,34 @@ function output() {
         console.log('\n');
     }
 }
+
+function storeFiles(state_file) {
+    var dir = './instructions/withoutRules';
+    if (!fs.existsSync(dir, { recursive: true })) {
+        fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(`${dir}/${state_file}.json`, JSON.stringify(Instructions));
+
+}
 async function run() {
     await initiateLiftSystem();
-    console.log('State-------------')
 
     let i = 1;
-    states.forEach((state) => {
-        console.log('\nState' + i)
-        scheduleJobs(JSON.parse(state))
+
+    for (state_file in states) {
+
+        // console.log(state);
+        scheduleJobs(JSON.parse(states[state_file]));
+        output();
+        storeFiles(state_file);
+        Instructions = {};
+        Intent = {}
         i++;
-    });
+    }
+    // states.forEach((state) => {
+
+
+    // });
 
 
 }
