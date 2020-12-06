@@ -98,8 +98,14 @@ function decideDirectionOfLift(lift_id, levelwise_situation, lifts_pos) {
     let down = 0;
 
 
+
     for (let level in levelwise_situation) {
         if (levelwise_situation.hasOwnProperty(level)) {
+
+            // console.log("\n upC" + up)
+            // console.log("\nlevel" + level)
+            // console.log("\nup" + JSON.stringify(levelwise_situation[level].up))
+            // console.log("\ndOWN" + JSON.stringify(levelwise_situation[level].down))
 
             if (level == lifts_pos[lift_id]) {
                 down += Object.size(levelwise_situation[level].down)
@@ -113,7 +119,7 @@ function decideDirectionOfLift(lift_id, levelwise_situation, lifts_pos) {
             }
         }
     }
-
+    console.log("\nUp and Down" + up + " " + down)
     if (up == 0 & down == 0) return 'idle'
     if (up > down) return 'up';
     return 'down'
@@ -129,6 +135,8 @@ function stopForEntry(levelwise_situation, pos, direction, requiredPeople, load,
 
     let x = levelwise_situation[pos][direction];
     let temp = 0;
+
+    let toBeDeletedLevels = [];
     for (destination in x) {
         x[destination].some((passenger) => {
             if (movement[destination] === undefined) movement[destination] = [];
@@ -141,10 +149,15 @@ function stopForEntry(levelwise_situation, pos, direction, requiredPeople, load,
             if (requiredPeople == 0) return true;
         })
         x[destination].splice(0, temp);
+        if (x[destination].length == 0) toBeDeletedLevels.push(destination);
         temp = 0;
         if (requiredPeople == 0) break;
     }
 
+
+    toBeDeletedLevels.forEach((level) => {
+        delete x[level];
+    })
     levelwise_situation[pos][direction] = x;
     return load;
 }
@@ -181,7 +194,9 @@ function movelift(levelwise_situation, lift_id, lifts_pos, movement, dir, load) 
                 load = stopForEntry(levelwise_situation, i, "up", MAX_CAPACITY - load, load, movement)
             }
         }
-        //startLift(lift_id, lifts_pos, levelwise_situation);
+
+        console.log(JSON.stringify(levelwise_situation))
+        startLift(lift_id, lifts_pos, levelwise_situation);
     }
 
     //down dir
@@ -202,7 +217,8 @@ function movelift(levelwise_situation, lift_id, lifts_pos, movement, dir, load) 
                 load = stopForEntry(levelwise_situation, i, "down", MAX_CAPACITY - load, load, movement)
             }
         }
-        //startLift(lift_id, lifts_pos, levelwise_situation);
+        console.log(JSON.stringify(levelwise_situation))
+        startLift(lift_id, lifts_pos, levelwise_situation);
     }
 }
 
@@ -214,7 +230,7 @@ function startLift(id, lifts_pos, levelwise_situation) {
     console.log(dir);
     //Get Passengers of Initial Level
     if (dir == 'idle') {
-
+        console.log('done-----')
     }
     else {
         let load = stopForEntry(levelwise_situation, lifts_pos[id], dir, MAX_CAPACITY, 0, movement)
@@ -234,10 +250,15 @@ function scheduleJobs(state) {
     state['lift'].forEach((lift) => createLiftDS(lift, lifts_pos))
 
     //decide directions of lift 
-    console.log(levelwise_situation[1]['up']);
-    console.log(levelwise_situation[2]['up']);
-    startLift(3, lifts_pos, levelwise_situation);
+    // console.log(levelwise_situation[1]['up']);
+    for (let level in levelwise_situation) {
 
+    }
+
+
+    // console.log(levelwise_situation)
+    startLift(1, lifts_pos, levelwise_situation);
+    // decideDirectionOfLift(1, levelwise_situation, lifts_pos);
 
 
     // console.log(levelwise_situation[1]);
