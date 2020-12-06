@@ -94,9 +94,11 @@ Object.size = function (obj) {
 // uper ke up, niche ke down
 function decideDirectionOfLift(lift_id, levelwise_situation, lifts_pos) {
 
-    let up = 0;
-    let down = 0;
+    let straightUp = 0;
+    let straightDown = 0;
 
+    let upThenDown = 0;
+    let downThenUp = 0;
 
 
     for (let level in levelwise_situation) {
@@ -108,21 +110,25 @@ function decideDirectionOfLift(lift_id, levelwise_situation, lifts_pos) {
             // console.log("\ndOWN" + JSON.stringify(levelwise_situation[level].down))
 
             if (level == lifts_pos[lift_id]) {
-                down += Object.size(levelwise_situation[level].down)
-                up += Object.size(levelwise_situation[level].up)
+                straightDown += Object.size(levelwise_situation[level].down)
+                straightUp += Object.size(levelwise_situation[level].up)
             }
             else if (level < lifts_pos[lift_id]) {
-                down += Object.size(levelwise_situation[level].down)
+                straightDown += Object.size(levelwise_situation[level].down)
+                downThenUp += Object.size(levelwise_situation[level].up)
             }
             else if (level > lifts_pos[lift_id]) {
-                up += Object.size(levelwise_situation[level].up)
+                straightUp += Object.size(levelwise_situation[level].up)
+                upThenDown += Object.size(levelwise_situation[level].down)
             }
         }
     }
-    console.log("\nUp and Down" + up + " " + down)
-    if (up == 0 & down == 0) return 'idle'
-    if (up > down) return 'up';
-    return 'down'
+    //console.log("\nUp and Down" + up + " " + down)
+    if (straightUp == 0 && straightDown == 0 && upThenDown == 0 && downThenUp == 0) return 'idle'
+    if (straightUp > straightDown) return 'up';
+    else if (straightUp != straightDown) return 'down';
+    else if (upThenDown > downThenUp) return 'up';
+    else return 'down';
 }
 
 // if there is updown, go to the highest or loweat flooe , will have to work on up and down
