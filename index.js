@@ -133,11 +133,14 @@ function decideDirectionOfLift(lift_id, levelwise_situation, lifts_pos) {
 
 // if there is updown, go to the highest or loweat flooe , will have to work on up and down
 // let x = levelwise_situation[lift_pos[lift_id]].direction;
-function stopForEntry(levelwise_situation, pos, direction, requiredPeople, load, movement) {
+function stopForEntry(levelwise_situation, pos, direction, requiredPeople, load, movement, lift_id) {
 
 
     //no stop as no waiting here
     if (levelwise_situation[pos] === undefined || levelwise_situation[pos][direction] === undefined) return load;
+
+    // lift open
+
 
     let x = levelwise_situation[pos][direction];
     let temp = 0;
@@ -147,7 +150,7 @@ function stopForEntry(levelwise_situation, pos, direction, requiredPeople, load,
         x[destination].some((passenger) => {
             if (movement[destination] === undefined) movement[destination] = [];
             movement[destination].push(passenger)
-
+            console.log("\nLift" + lift_id + "open")
             console.log("\nPassenger" + passenger + "Entry" + "at" + pos)
             requiredPeople--;
             temp++;
@@ -183,51 +186,50 @@ function stopForExit(movement, i) {
 function movelift(levelwise_situation, lift_id, lifts_pos, movement, dir, load) {
 
     // up dir
+    let start_point = lifts_pos[lift_id];
     if (dir == 'up') {
 
-
-        let start_point = lifts_pos[lift_id];
         for (let i = start_point; i <= MAX_LEVEL; i++) {
-
 
             if (movement.hasOwnProperty(i)) {
                 lifts_pos[lift_id] = i;
                 load = load - stopForExit(movement, i);
-                console.log("asdsad" + load);
+
             }
             if (load < MAX_CAPACITY) {
                 lifts_pos[lift_id] = i;
-                load = stopForEntry(levelwise_situation, i, "up", MAX_CAPACITY - load, load, movement)
+                load = stopForEntry(levelwise_situation, i, "up", MAX_CAPACITY - load, load, movement, lift_id)
             }
         }
 
-        console.log(JSON.stringify(levelwise_situation))
-        startLift(lift_id, lifts_pos, levelwise_situation);
-    }
 
+
+    }
     //down dir
     if (dir == 'down') {
 
 
-        let start_point = lifts_pos[lift_id];
         for (let i = start_point; i >= MIN_LEVEL; i--) {
 
 
             if (movement.hasOwnProperty(i)) {
                 lifts_pos[lift_id] = i;
                 load = load - stopForExit(movement, i);
-                console.log("asdsad" + load);
+
             }
             if (load < MAX_CAPACITY) {
                 lifts_pos[lift_id] = i;
-                load = stopForEntry(levelwise_situation, i, "down", MAX_CAPACITY - load, load, movement)
+                load = stopForEntry(levelwise_situation, i, "down", MAX_CAPACITY - load, load, movement, lift_id)
             }
         }
-        console.log(JSON.stringify(levelwise_situation))
-        startLift(lift_id, lifts_pos, levelwise_situation);
     }
+
+    startLift(delegateWork(lift_id, lifts_pos), lifts_pos, levelwise_situation);
 }
 
+function delegateWork(prev_one, lifts_pos) {
+    return (prev_one + 1) % (Object.size(lifts_pos) + 1);
+}
 
 function startLift(id, lifts_pos, levelwise_situation) {
     let movement = {}
@@ -239,7 +241,8 @@ function startLift(id, lifts_pos, levelwise_situation) {
         console.log('done-----')
     }
     else {
-        let load = stopForEntry(levelwise_situation, lifts_pos[id], dir, MAX_CAPACITY, 0, movement)
+
+        let load = stopForEntry(levelwise_situation, lifts_pos[id], dir, MAX_CAPACITY, 0, movement, id)
         movelift(levelwise_situation, id, lifts_pos, movement, dir, load)
     }
 }
@@ -261,9 +264,9 @@ function scheduleJobs(state) {
 
     }
 
-
+    startLift(delegateWork(0, lifts_pos), lifts_pos, levelwise_situation);
     // console.log(levelwise_situation)
-    startLift(1, lifts_pos, levelwise_situation);
+
     // decideDirectionOfLift(1, levelwise_situation, lifts_pos);
 
 
