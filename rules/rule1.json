@@ -1,0 +1,7 @@
+{
+    "ruleName": "ProrityToDisabled",
+    "isRuleActive": false,
+    "rule": {
+        "disablePersonIdentifier": "disabled"
+    }
+}

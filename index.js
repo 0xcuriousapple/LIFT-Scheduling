@@ -1,41 +1,65 @@
+
+
+// Node Modules
 const HCL = require("js-hcl-parser");
 const csv = require('csv-parser')
 const fs = require('fs');
 const util = require('util');
-const { Engine } = require('json-rules-engine');
-const { INSPECT_MAX_BYTES } = require("buffer");
 
 
-const pathToStates = "./states"
-
+// Constants
+const pathToStates = "./states/"
+const pathToRules = "./rules/"
 const MAX_CAPACITY = 3;
 const MAX_LEVEL = 25;
 const MIN_LEVEL = 1;
-
-let states = {};
 let passengersData = [];
+
+// Promisifying fs methods, Reason : optimiztion of initiateLiftSystem() 
 const readFile = util.promisify(fs.readFile);
 const readdir = util.promisify(fs.readdir);
 
 // function setupRules() {
 //     let engine = new Engine()
 
+
+// Things Lift Admin can see at any time and set them
 let Instructions = {}
-let Intent = {}
-// let Childern = {
+let Intent = {} // This shoudnt be needed, we can remove it by refactoring code
+let rules = {}
 
-//     'id': {
-//         mappedParent:
-//             inpath :
-//         parentStart:
-//             parentDestination :
-//     }
 
-// }
+// Destination folder name : To decide withrespect to rules used
+let FolderName = "WithOutRules";
+
+async function initiateRulesEngine(rules) {
+    //names = await fs.readdir("path/to/dir");
+    let Promises = []
+    let filenames = await readdir(pathToRules);
+    filenames.forEach((filename) => {
+        Promises.push(new Promise((resolve, reject) => {
+            readFile(pathToRules + filename, 'utf-8').then((rule, error) => {
+
+                let json = JSON.parse(rule);
+                if (json.isRuleActive) {
+                    if (FolderName.length + json.ruleName.length < 255) {
+                        if (FolderName == "WithOutRules") FolderName = "With";
+                        FolderName = FolderName + json.ruleName;
+                    }
+                    rules[json.ruleName] = json.rule;
+                }
+
+                resolve();
+            })
+        }))
+    })
+    await Promise.all(Promises)
+}
+
 
 
 // To get all data ready so we dont process it again and again
-async function initiateLiftSystem() {
+async function initiateLiftSystem(states, passengersData) {
 
     //names = await fs.readdir("path/to/dir");
     let Promises = []
@@ -43,7 +67,7 @@ async function initiateLiftSystem() {
     let filenames = await readdir(pathToStates);
     filenames.forEach((filename) => {
         Promises.push(new Promise((resolve, reject) => {
-            readFile(pathToStates + "/" + filename, 'utf-8').then((state, error) => {
+            readFile(pathToStates + filename, 'utf-8').then((state, error) => {
                 states[filename.slice(0, -4)] = HCL.parse(state);
                 resolve();
             })
@@ -56,9 +80,9 @@ async function initiateLiftSystem() {
             .on('data', (data) => {
 
                 passengersData[data['id']] = {
-                    'isDisabled': data['health'] == 'disabled' ? true : false,
-                    'isChildern': parseInt(data['age']),
-                    'fam_id': parseInt(data['family_id']),
+                    'health': data['health'],
+                    'age': parseInt(data['age']),
+                    'familyId': parseInt(data['family_id']),
                 }
                 resolve();
             })
@@ -67,19 +91,64 @@ async function initiateLiftSystem() {
     await Promise.all(Promises)
 }
 
+
+function disableFilter(passenger_id) {
+
+    if (rules['ProrityToDisabled'] != undefined && passengersData[passenger_id].health == rules['ProrityToDisabled']["disablePersonIdentifier"]) {
+        return true;
+    }
+    else {
+        return false;
+    }
+}
+
 function createlevelDS(p, d, levelwise_situation, passenger_id) {
+
+    let disablefilter = disableFilter(passenger_id)
+
+    // if (disablefilter) console.log(disablefilter, passenger_id);
     if (levelwise_situation[p] === undefined) {
-        levelwise_situation[p] = { "up": {}, "down": {} };
+        levelwise_situation[p] = { "up": {}, "down": {}, "disabledUp": {}, "disabledDown": {} };
     }
     if (d > p) {
-        if (levelwise_situation[p]["up"][d] === undefined) levelwise_situation[p]["up"][d] = [];
-        levelwise_situation[p]["up"][d].push(passenger_id);
+
+        if (disablefilter) {
+            if (levelwise_situation[p]["disabledUp"][d] === undefined) levelwise_situation[p]["disabledUp"][d] = [];
+            levelwise_situation[p]["disabledUp"][d].push(passenger_id);
+        }
+        else {
+            if (levelwise_situation[p]["up"][d] === undefined) levelwise_situation[p]["up"][d] = [];
+            levelwise_situation[p]["up"][d].push(passenger_id);
+        }
 
     }
     else {
-        if (levelwise_situation[p]["down"][d] === undefined) levelwise_situation[p]["down"][d] = [];
-        levelwise_situation[p]["down"][d].push(passenger_id);
+        if (disablefilter) {
+            if (levelwise_situation[p]["disabledDown"][d] === undefined) levelwise_situation[p]["disabledDown"][d] = [];
+            levelwise_situation[p]["disabledDown"][d].push(passenger_id);
+        }
+        else {
+            if (levelwise_situation[p]["down"][d] === undefined) levelwise_situation[p]["down"][d] = [];
+            levelwise_situation[p]["down"][d].push(passenger_id);
+        }
     }
+}
+
+// This function, can be extended if we want to assign level wise Priority as well
+// Disabled Persons at First in queue
+function SortbyPriorityToDisabledPeople(levelwise_situation) {
+
+    // console.log('\nSortingHappening')
+    for (level in levelwise_situation) {
+
+        for (destination in levelwise_situation[level]['disabledDown']) {
+            levelwise_situation[level]['down'][destination] = levelwise_situation[level]['disabledDown'][destination].concat(levelwise_situation[level]['down'][destination]);
+        }
+        for (destination in levelwise_situation[level]['disabledUp']) {
+            levelwise_situation[level]['up'][destination] = levelwise_situation[level]['disabledUp'][destination].concat(levelwise_situation[level]['up'][destination]);
+        }
+    }
+
 }
 function groupPassengers(state, levelwise_situation) {
 
@@ -113,31 +182,51 @@ function decideDirectionOfLift(lift_id, levelwise_situation, lifts_pos) {
     let downThenUp = 0;
 
 
+    // Sorry Zan, Here this tight coupling of disabled people shouuld have beeen avoided, but this time limit is not allowing me too
+    let disabledPeopleStraightUp = 0;
+    let disabledPeopleStraightDown = 0;
+
+    let disabledPeopleUpThenDown = 0;
+    let disabledPeopleDownThenUp = 0;
+
     for (let level in levelwise_situation) {
+        console.log(level);
         if (levelwise_situation.hasOwnProperty(level)) {
 
-            // console.log("\n upC" + up)
-            // console.log("\nlevel" + level)
-            // console.log("\nup" + JSON.stringify(levelwise_situation[level].up))
-            // console.log("\ndOWN" + JSON.stringify(levelwise_situation[level].down))
 
             if (level == lifts_pos[lift_id]) {
                 straightDown += Object.size(levelwise_situation[level].down)
                 straightUp += Object.size(levelwise_situation[level].up)
+
+                disabledPeopleStraightDown += Object.size(levelwise_situation[level].disabledDown)
+                disabledPeopleStraightUp += Object.size(levelwise_situation[level].disabledUp)
             }
             else if (level < lifts_pos[lift_id]) {
                 straightDown += Object.size(levelwise_situation[level].down)
                 downThenUp += Object.size(levelwise_situation[level].up)
+
+                disabledPeopleStraightDown += Object.size(levelwise_situation[level].disabledDown)
+                disabledPeopleDownThenUp += Object.size(levelwise_situation[level].disabledUp)
             }
             else if (level > lifts_pos[lift_id]) {
                 straightUp += Object.size(levelwise_situation[level].up)
                 upThenDown += Object.size(levelwise_situation[level].down)
+
+
+                disabledPeopleStraightUp += Object.size(levelwise_situation[level].disabledUp)
+                disabledPeopleUpThenDown += Object.size(levelwise_situation[level].disabledDown)
             }
         }
     }
-    //console.log("\nUp and Down" + up + " " + down)
+
+    // //This can also be wrote clean
+    // console.log(straightUp, straightDown, straight)
     if (straightUp == 0 && straightDown == 0 && upThenDown == 0 && downThenUp == 0) return 'idle'
-    if (straightUp > straightDown) return 'up';
+    if (disabledPeopleStraightUp > disabledPeopleStraightDown) return 'up';
+    else if (disabledPeopleStraightUp != disabledPeopleStraightDown) return 'down';
+    else if (disabledPeopleUpThenDown > disabledPeopleUpThenDown) return 'up';
+    else if (disabledPeopleUpThenDown != disabledPeopleUpThenDown) return 'down';
+    else if (straightUp > straightDown) return 'up';
     else if (straightUp != straightDown) return 'down';
     else if (upThenDown > downThenUp) return 'up';
     else return 'down';
@@ -290,6 +379,13 @@ function scheduleJobs(state) {
 
     //grouping - to add childern clasue here
     groupPassengers(state['passenger'], levelwise_situation);
+    // console.log("--------------------------------------------------")
+    // console.log(levelwise_situation['1'].up);
+
+    // sorting : Giving Priority to Disabled people
+    if (rules['ProrityToDisabled'] !== undefined) SortbyPriorityToDisabledPeople(levelwise_situation);
+
+    // console.log(levelwise_situation['1'].up);
 
     // create lift ds
     state['lift'].forEach((lift) => createLiftDS(lift, lifts_pos))
@@ -320,7 +416,7 @@ function output() {
 }
 
 function storeFiles(state_file) {
-    var dir = './instructions/withoutRules';
+    var dir = './instructions/' + FolderName;
     if (!fs.existsSync(dir, { recursive: true })) {
         fs.mkdirSync(dir, { recursive: true });
     }
@@ -328,19 +424,25 @@ function storeFiles(state_file) {
 
 }
 async function run() {
-    await initiateLiftSystem();
+
+
+    let states = {};
+
+
+    await initiateRulesEngine(rules);
+    await initiateLiftSystem(states, passengersData);
 
     let i = 1;
 
     for (state_file in states) {
-
-        // console.log(state);
+        // if (state_file == 'state_8') {
         scheduleJobs(JSON.parse(states[state_file]));
         output();
         storeFiles(state_file);
         Instructions = {};
         Intent = {}
         i++;
+        // }
     }
     // states.forEach((state) => {
 
