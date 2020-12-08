@@ -1,0 +1,15 @@
+{
+    "1": [
+        "GO DOWN",
+        "PASSENGER 22 ENTER",
+        "GO UP",
+        "STOP 15",
+        "PASSENGER 22 LEAVE",
+        "GO DOWN",
+        "STOP 1"
+    ],
+    "2": [
+        "GO DOWN",
+        "STOP 1"
+    ]
+}
