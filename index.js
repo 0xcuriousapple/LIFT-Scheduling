@@ -5,10 +5,10 @@ const HCL = require("js-hcl-parser");
 const csv = require('csv-parser')
 const fs = require('fs');
 const util = require('util');
-
+const path = require('path');
 
 // Constants
-const pathToStates = process.argv[2];
+const pathToStates = process.argv[2] == undefined ? "./states" : process.argv[2];
 const pathToRules = "./rules/"
 const MAX_CAPACITY = 3;
 const MAX_LEVEL = 25;
@@ -29,19 +29,6 @@ let prevDoorOpen = {}
 let FolderName = "WithOutRules";
 
 
-
-// // 
-// A1
-
-// let Parent 
-
-// C45
-// P['ID'] = ID, OWN,DESTINATION
-// P1
-
-// OP-1
-
-// PC-
 async function initiateRulesEngine(rules) {
     //names = await fs.readdir("path/to/dir");
     let Promises = []
@@ -77,7 +64,7 @@ async function initiateLiftSystem(states, passengersData) {
     let filenames = await readdir(pathToStates);
     filenames.forEach((filename) => {
         Promises.push(new Promise((resolve, reject) => {
-            readFile(pathToStates + "/" + filename, 'utf-8').then((state, error) => {
+            readFile(path.join(pathToStates, filename), 'utf-8').then((state, error) => {
                 states[filename.slice(0, -4)] = HCL.parse(state);
                 resolve();
             })
@@ -192,6 +179,7 @@ function groupPassengers(state, levelwise_situation) {
 
 function createLiftDS(lift, lifts_pos) {
     lifts_pos[lift['id']] = lift['at_level'];
+    prevDoorOpen[lift['id']] = lift['at_level'];
 }
 
 Object.size = function (obj) {
@@ -251,8 +239,8 @@ function decideDirectionOfLift(lift_id, levelwise_situation, lifts_pos) {
     // //This can also be wrote clean
     // console.log(straightUp, straightDown, straight)
 
-
-    //console.log(straightUp, straightDown, upThenDown, downThenUp);
+    // if (straightUp == 0, straightDown == 0, upThenDown == 3) console.log(levelwise_situation['22']['down']);
+    //console.log(straightUp, straightDown, upThenDown, downThenUp, disabledPeopleStraightUp, disabledPeopleStraightDown, disabledPeopleUpThenDown, disabledPeopleDownThenUp);
     if (straightUp == 0 && straightDown == 0 && upThenDown == 0 && downThenUp == 0) return 'idle'
     if (disabledPeopleStraightUp > disabledPeopleStraightDown) return 'up';
     else if (disabledPeopleStraightUp != disabledPeopleStraightDown) return 'down';
@@ -294,14 +282,18 @@ function stopForEntry(levelwise_situation, pos, direction, requiredPeople, load,
     //no stop as no waiting here
     if (levelwise_situation[pos] === undefined || levelwise_situation[pos][direction] === undefined || Object.size(levelwise_situation[pos][direction]) == 0) return load;
 
-    let x = levelwise_situation[pos][direction];
+
+    let X = levelwise_situation[pos];
+    let x = X[direction];
     let temp = 0;
+    let disabledtemp = 0;
+
     let toBeDeletedLevels = [];
     // console.log("\nBefore", x);
     // console.log("\n Movement", movement);
     // console.log("--------------------------------")
     lift_pos[lift_id] = pos;
-    if (prevDoorOpen[lift_id] != pos) Instructions[lift_id].push('STOP ' + pos)
+    if (prevDoorOpen[lift_id] != pos) { Instructions[lift_id].push('STOP ' + pos); /*console.log(`${lift_id} STOP ` + pos);*/ }
     prevDoorOpen[lift_id] = pos;
     //console.log(x);
     for (destination in x) {
@@ -322,10 +314,17 @@ function stopForEntry(levelwise_situation, pos, direction, requiredPeople, load,
 
                 // console.log('gosolo');
                 movement[destination].push(passenger)
+                //console.log(`${lift_id} PASSENGER ` + passenger + " ENTER");
                 Instructions[lift_id].push("PASSENGER " + passenger + " ENTER")
+
                 requiredPeople = 0;
                 goSolo[passenger] = true;
+
+                if (disabledFilter(passenger)) {
+                    disabledtemp++;
+                }
                 temp++;
+
                 load = MAX_CAPACITY;
                 if (requiredPeople == 0) return true;
             }
@@ -333,9 +332,15 @@ function stopForEntry(levelwise_situation, pos, direction, requiredPeople, load,
 
 
                 movement[destination].push(passenger)
+                //console.log(`${lift_id} PASSENGER ` + passenger + " ENTER");
                 Instructions[lift_id].push("PASSENGER " + passenger + " ENTER")
                 requiredPeople--;
+
+                if (disabledFilter(passenger)) {
+                    disabledtemp++;
+                }
                 temp++;
+
                 load++;
                 if (requiredPeople == 0) return true;
             }
@@ -344,7 +349,18 @@ function stopForEntry(levelwise_situation, pos, direction, requiredPeople, load,
         })
         x[destination].splice(0, temp);
         if (x[destination].length == 0) toBeDeletedLevels.push(destination);
+
+        // Delete entries of Disabled People if there are any
+        let y = `disabled` + direction.charAt(0).toUpperCase() + direction.slice(1);
+
+        if (X[y][destination] != undefined) {
+            X[y][destination].splice(0, disabledtemp);
+            if (X[y][destination].length == 0) delete X[y][destination];
+        }
+
+
         temp = 0;
+        disabledtemp = 0;
         if (requiredPeople == 0) break;
     }
 
@@ -362,9 +378,10 @@ function stopForExit(lift_id, movement, i, lifts_pos) {
     let flag = false;
 
     // To check if lift is not already there
-    if (prevDoorOpen[lift_id] != i) Instructions[lift_id].push('STOP ' + i)
+    if (prevDoorOpen[lift_id] != i) { Instructions[lift_id].push('STOP ' + i); /*console.log(`${lift_id} STOP ` + i);*/ }
     prevDoorOpen[lift_id] = i;
     movement[i].forEach((passenger) => {
+        //console.log(`${lift_id} PASSENGER ` + passenger + " LEAVE");
         Instructions[lift_id].push("PASSENGER " + passenger + " LEAVE");
 
         // Childern Go Solo Case
@@ -392,9 +409,11 @@ let test = 1;
 
 function moveliftSingular(levelwise_situation, lift_id, lifts_pos, movement, dir, load) {
     // up dir
-    // console.log(dir);
+    // console.log(dir, movement);
+
     let start_point = lifts_pos[lift_id];
     if (dir == 'up') {
+        //console.log(`${lift_id} GO ` + 'UP');
         Instructions[lift_id].push('GO ' + 'UP');
         for (let i = start_point; i <= MAX_LEVEL; i++) {
 
@@ -415,6 +434,7 @@ function moveliftSingular(levelwise_situation, lift_id, lifts_pos, movement, dir
     }
 
     if (dir == 'updown') {
+        //console.log(`${lift_id} GO ` + 'UP');
         Instructions[lift_id].push('GO ' + 'UP');
         for (let i = start_point; i <= MAX_LEVEL; i++) {
 
@@ -435,7 +455,7 @@ function moveliftSingular(levelwise_situation, lift_id, lifts_pos, movement, dir
     }
     //down dir
     if (dir == 'down') {
-
+        //console.log(`${lift_id} GO ` + 'DOWN');
         Instructions[lift_id].push('GO ' + 'DOWN');
         for (let i = start_point; i >= MIN_LEVEL; i--) {
 
@@ -453,7 +473,7 @@ function moveliftSingular(levelwise_situation, lift_id, lifts_pos, movement, dir
     }
 
     if (dir == 'downup') {
-
+        //console.log(`${lift_id} GO ` + 'DOWN');
         Instructions[lift_id].push('GO ' + 'DOWN');
         for (let i = start_point; i >= MIN_LEVEL; i--) {
 
@@ -548,6 +568,11 @@ function scheduleJobs(state) {
     // create lift ds
     state['lift'].forEach((lift) => createLiftDS(lift, lifts_pos))
     startLift(delegateWork(0, lifts_pos), lifts_pos, levelwise_situation, Intent);
+    goToGround(lifts_pos, Intent);
+}
+
+
+function goToGround(lifts_pos, Intent) {
     for (lift_id in lifts_pos) {
         if (Instructions[lift_id] === undefined) Instructions[lift_id] = [];
         // console.log(Intent);
@@ -557,16 +582,6 @@ function scheduleJobs(state) {
         Instructions[lift_id].push('STOP 1')
 
     }
-}
-
-
-function goToGround(lift_id) {
-
-    console.log(lift_id);
-
-    //if (Intent[lift_id] == 'UP') 
-    Instructions[lift_id].push('GO DOWN')
-    Instructions[lift_id].push('STOP 1')
 }
 function output() {
     for (lift_id in Instructions) {
@@ -587,33 +602,18 @@ function storeFiles(state_file) {
 
 }
 async function run() {
-
-
     let states = {};
-
-
     await initiateRulesEngine(rules);
     await initiateLiftSystem(states, passengersData);
-
-    let i = 1;
-
     for (state_file in states) {
-
 
         scheduleJobs(JSON.parse(states[state_file]));
         output();
         storeFiles(state_file);
         Instructions = {};
-        i++;
-
 
     }
-    // states.forEach((state) => {
-
-
-    // });
-
 
 }
 run();
-// console.log(process.argv)
+
