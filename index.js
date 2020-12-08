@@ -19,9 +19,6 @@ let passengersData = [];
 const readFile = util.promisify(fs.readFile);
 const readdir = util.promisify(fs.readdir);
 
-// function setupRules() {
-//     let engine = new Engine()
-
 
 // Things Lift Admin can see at any time and set them
 let Instructions = {}
@@ -32,6 +29,20 @@ let rules = {}
 // Destination folder name : To decide withrespect to rules used
 let FolderName = "WithOutRules";
 
+
+
+// // 
+// A1
+
+// let Parent 
+
+// C45
+// P['ID'] = ID, OWN,DESTINATION
+// P1
+
+// OP-1
+
+// PC-
 async function initiateRulesEngine(rules) {
     //names = await fs.readdir("path/to/dir");
     let Promises = []
@@ -92,7 +103,7 @@ async function initiateLiftSystem(states, passengersData) {
 }
 
 
-function disableFilter(passenger_id) {
+function disabledFilter(passenger_id) {
 
     if (rules['ProrityToDisabled'] != undefined && passengersData[passenger_id].health == rules['ProrityToDisabled']["disablePersonIdentifier"]) {
         return true;
@@ -102,9 +113,19 @@ function disableFilter(passenger_id) {
     }
 }
 
+function safeChildernFilter(passenger_id) {
+    //console.log(passenger_id)
+    if (rules['SafeChildern'] != undefined && passengersData[passenger_id]["age"] <= rules['SafeChildern']["minAge"]) {
+        return true;
+    }
+    else {
+        return false;
+    }
+}
+
 function createlevelDS(p, d, levelwise_situation, passenger_id) {
 
-    let disablefilter = disableFilter(passenger_id)
+    let disablefilter = disabledFilter(passenger_id)
 
     // if (disablefilter) console.log(disablefilter, passenger_id);
     if (levelwise_situation[p] === undefined) {
@@ -134,7 +155,7 @@ function createlevelDS(p, d, levelwise_situation, passenger_id) {
     }
 }
 
-// This function, can be extended if we want to assign level wise Priority as well
+// This function, can be extended if we want to assign level wise Priority as well 
 // Disabled Persons at First in queue
 function SortbyPriorityToDisabledPeople(levelwise_situation) {
 
@@ -190,7 +211,7 @@ function decideDirectionOfLift(lift_id, levelwise_situation, lifts_pos) {
     let disabledPeopleDownThenUp = 0;
 
     for (let level in levelwise_situation) {
-        console.log(level);
+        //console.log(level);
         if (levelwise_situation.hasOwnProperty(level)) {
 
 
@@ -232,36 +253,83 @@ function decideDirectionOfLift(lift_id, levelwise_situation, lifts_pos) {
     else return 'down';
 }
 
+let goSolo = {};
+function decisionForChildern(passenger_id, movement, destination) {
 
+    // console.log('\nmovement-----', movement);
+    let parentfound = false;
+    movement[destination].forEach((passengerInsideLift) => {
+        if (passengersData[passenger_id].familyId == passengersData[passengerInsideLift].familyId) {
+            parentfound = true;
+        }
+    })
+    if (parentfound) {
+        return "Safe"
+    }
+    if (Object.size(movement) == 1) {
+        requiredPeople = 0;
+
+        // console.log("goSolo");
+        return "goSolo";
+    }
+
+    return "wait";
+
+}
 // let x = levelwise_situation[lift_pos[lift_id]].direction;
-function stopForEntry(levelwise_situation, pos, direction, requiredPeople, load, movement, lift_id) {
+function stopForEntry(levelwise_situation, pos, direction, requiredPeople, load, movement, lift_id, lift_pos) {
 
 
     //no stop as no waiting here
     if (levelwise_situation[pos] === undefined || levelwise_situation[pos][direction] === undefined || Object.size(levelwise_situation[pos][direction]) == 0) return load;
 
-
     let x = levelwise_situation[pos][direction];
     let temp = 0;
-
     let toBeDeletedLevels = [];
-
-    if (Object.size(movement) != 0) Instructions[lift_id].push('STOP ' + pos)
-
+    // console.log("\nBefore", x);
+    // console.log("\n Movement", movement);
+    // console.log("--------------------------------")
+    lift_pos[lift_id] = pos;
+    Instructions[lift_id].push('STOP ' + pos)
+    //console.log(x);
     for (destination in x) {
-
         x[destination].some((passenger) => {
             if (movement[destination] === undefined) movement[destination] = [];
-            movement[destination].push(passenger)
-            //console.log("\nLift" + lift_id + "open")
-            Instructions[lift_id].push("PASSENGER " + passenger + " ENTER")
-            requiredPeople--;
-            temp++;
-            load++;
-            if (requiredPeople == 0) return true;
+            //console.log(passenger);
+            let decision = "NA"
+
+            // console.log(safeChildernFilter(passenger), passengersData[passenger]["age"]);
+            if (safeChildernFilter(passenger)) {
+                decision = decisionForChildern(passenger, movement, destination);
+            }
+
+            if (decision == 'wait') {
+
+            }
+            else if (decision == 'goSolo') {
+
+                // console.log('gosolo');
+                movement[destination].push(passenger)
+                Instructions[lift_id].push("PASSENGER " + passenger + " ENTER")
+                requiredPeople = 0;
+                goSolo[passenger] = true;
+                temp++;
+                load = MAX_CAPACITY;
+                if (requiredPeople == 0) return true;
+            }
+            else { // FOR PARENT FOUND OR NA CASE
+
+
+                movement[destination].push(passenger)
+                Instructions[lift_id].push("PASSENGER " + passenger + " ENTER")
+                requiredPeople--;
+                temp++;
+                load++;
+                if (requiredPeople == 0) return true;
+            }
+
+
         })
-
-
         x[destination].splice(0, temp);
         if (x[destination].length == 0) toBeDeletedLevels.push(destination);
         temp = 0;
@@ -272,27 +340,38 @@ function stopForEntry(levelwise_situation, pos, direction, requiredPeople, load,
     toBeDeletedLevels.forEach((level) => {
         delete x[level];
     })
+    // console.log("\nAfter", x);
     levelwise_situation[pos][direction] = x;
     return load;
 }
 
 function stopForExit(lift_id, movement, i) {
 
-
+    let flag = false;
     Instructions[lift_id].push('STOP ' + i)
     movement[i].forEach((passenger) => {
         Instructions[lift_id].push("PASSENGER " + passenger + " LEAVE");
+
+        // Childern Go Solo Case
+        if (goSolo[passenger] == true) {
+            // console.log("sadsaasas---------------------------------------------");
+            flag = true;
+            goSolo[passenger] = false;
+        }
     })
 
 
     let freed_load = movement[i].length
     delete movement[i];
 
-    return freed_load;
 
+    if (flag) {
+        freed_load = MAX_CAPACITY;
+    }
+    return freed_load;
 }
 
-
+let test = 1;
 
 function movelift(levelwise_situation, lift_id, lifts_pos, movement, dir, load) {
 
@@ -309,8 +388,9 @@ function movelift(levelwise_situation, lift_id, lifts_pos, movement, dir, load) 
 
             }
             if (load < MAX_CAPACITY) {
-                lifts_pos[lift_id] = i;
-                load = stopForEntry(levelwise_situation, i, "up", MAX_CAPACITY - load, load, movement, lift_id)
+                // lifts_pos[lift_id] = i;
+
+                load = stopForEntry(levelwise_situation, i, "up", MAX_CAPACITY - load, load, movement, lift_id, lifts_pos)
             }
         }
 
@@ -330,13 +410,18 @@ function movelift(levelwise_situation, lift_id, lifts_pos, movement, dir, load) 
 
             }
             if (load < MAX_CAPACITY) {
-                lifts_pos[lift_id] = i;
-                load = stopForEntry(levelwise_situation, i, "down", MAX_CAPACITY - load, load, movement, lift_id)
+                // lifts_pos[lift_id] = i;
+                load = stopForEntry(levelwise_situation, i, "down", MAX_CAPACITY - load, load, movement, lift_id, lifts_pos)
             }
         }
     }
 
-    startLift(delegateWork(lift_id, lifts_pos), lifts_pos, levelwise_situation);
+    console.log(lifts_pos);
+    // startLift(delegateWork(lift_id, lifts_pos), lifts_pos, levelwise_situation);
+    if (test == 1) {
+        test++;
+        startLift(1, lifts_pos, levelwise_situation);
+    }
 }
 
 function delegateWork(prev_one, lifts_pos) {
@@ -357,14 +442,17 @@ function startLift(id, lifts_pos, levelwise_situation) {
     let movement = {}
     let dir = decideDirectionOfLift(id, levelwise_situation, lifts_pos);
 
+    console.log(dir);
+    console.log(JSON.stringify(levelwise_situation));
     //Get Passengers of Initial Level
     if (dir == 'idle') {
 
     }
     else {
         if (Instructions[id] === undefined) Instructions[id] = [];
-        let load = stopForEntry(levelwise_situation, lifts_pos[id], dir, MAX_CAPACITY, 0, movement, id)
         Instructions[id].push('GO ' + dir.toUpperCase());
+        let load = stopForEntry(levelwise_situation, lifts_pos[id], dir, MAX_CAPACITY, 0, movement, id, lifts_pos)
+
 
         if (Intent[id] === undefined) Intent[id] = [];
         Intent[id] = dir.toUpperCase();
@@ -385,18 +473,17 @@ function scheduleJobs(state) {
     // sorting : Giving Priority to Disabled people
     if (rules['ProrityToDisabled'] !== undefined) SortbyPriorityToDisabledPeople(levelwise_situation);
 
-    // console.log(levelwise_situation['1'].up);
-
+    console.log(JSON.stringify(levelwise_situation));
     // create lift ds
     state['lift'].forEach((lift) => createLiftDS(lift, lifts_pos))
 
 
     startLift(delegateWork(0, lifts_pos), lifts_pos, levelwise_situation);
 
-    for (lift_id in lifts_pos) {
-        if (lifts_pos[lift_id] != 1) { goToGround(lift_id) }
-        if (Instructions[lift_id][Instructions[lift_id].length - 1] == "GO DOWN") { Instructions[lift_id].push('STOP 1') }
-    }
+    // for (lift_id in lifts_pos) {
+    //     if (lifts_pos[lift_id] != 1) { goToGround(lift_id) }
+    //     if (Instructions[lift_id][Instructions[lift_id].length - 1] == "GO DOWN") { Instructions[lift_id].push('STOP 1') }
+    // }
 }
 
 
@@ -435,14 +522,14 @@ async function run() {
     let i = 1;
 
     for (state_file in states) {
-        // if (state_file == 'state_8') {
-        scheduleJobs(JSON.parse(states[state_file]));
-        output();
-        storeFiles(state_file);
-        Instructions = {};
-        Intent = {}
-        i++;
-        // }
+        if (state_file == 'state_3') {
+            scheduleJobs(JSON.parse(states[state_file]));
+            output();
+            storeFiles(state_file);
+            Instructions = {};
+            Intent = {}
+            i++;
+        }
     }
     // states.forEach((state) => {
 

@@ -1,0 +1,7 @@
+{
+    "ruleName": "SafeChildern",
+    "isRuleActive": false,
+    "rule": {
+        "minAge": "12"
+    }
+}
