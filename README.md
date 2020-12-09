@@ -37,11 +37,20 @@
         <li><a href="https://github.com/abhishekvispute/LIFT-Scheduling/tree/main/instructions/WithProrityToDisabledSafeChildern">Instructions with Rule 1 and 2</a></li>
       </ul>
     </li>
-    <li><a href="#https://github.com/abhishekvispute/LIFT-Scheduling/blob/main/DesignConsiderations.md">Design Decision</a></li>
-    <li><a href="#https://github.com/abhishekvispute/LIFT-Scheduling/blob/main/DesignConsiderations.md">Design Considerations</a></li>
+    <li><a href="https://github.com/abhishekvispute/LIFT-Scheduling/blob/main/DesignConsiderations.md">Design Decision</a></li>
+    <li><a href="https://github.com/abhishekvispute/LIFT-Scheduling/blob/main/DesignDecisions.md">Design Considerations</a></li>
     <li><a href="https://github.com/abhishekvispute/LIFT-Scheduling/blob/main/Installation.md">Installation Instructions</a></li>
   </ol>
 </details>
 <img src="https://github.com/abhishekvispute/LIFT-Scheduling/blob/main/Flow.png" alt="Flow Diagram" ">
+
+### Rules :
+#### PriorityToDisabled
+1. If disabled people are waiting for a lift, once the lift arrives, they are boarded first.
+2. If disabled people are in the lift, they are served first. (If any passengers destination comes in-between, he is allowed to leave)
+3. If disabled people call a lift, they are responded on priority.
+
+#### SafeChildern  
+Children only board the lift if a parent is present inside the lift, if not they wait and board solo.
 
 
