@@ -1,7 +1,7 @@
 # Improving elevator experience 
 
 ## Abstract
-In the last few decades, There has been significant development in technologies like AI/ML, GPU, etc., but the same has not been reflected in Elevator/Lift Scheduling.
+In the last few decades, There has been significant development in technologies like AI/ML, GPU, etc., but the same has not been reflected in Elevator or Lift Scheduling.
 In this document, we will explore how we can improve the elevator experience.
 
 ## Parameters
@@ -12,7 +12,7 @@ In this document, we will explore how we can improve the elevator experience.
  4. Passengers, Waiting 
  5. Passengers, Inside the Lift
 
-(Note : We are assuming we can capture these paraments by a cameras)
+(Note : We can capture these paraments by a cameras)
 
 # Proposals
 
