@@ -11,7 +11,7 @@
   <h3 align="center">LIFT SCHEDULING</h3>
 
   <p align="center">
-    A rule and destination based grouping  
+    A Rule and Destination based Grouping  
   </p>
 </p>
 
@@ -39,7 +39,7 @@
       </ul>
     </li>
     <li><a href="#roadmap">Design Decisions</a></li>
-    <li><a href="#roadmap">Installation Instructions</a></li>
+    <li><a href="https://github.com/abhishekvispute/LIFT-Scheduling/blob/main/Installation.md">Installation Instructions</a></li>
   </ol>
 </details>
 
