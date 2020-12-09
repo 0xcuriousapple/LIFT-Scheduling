@@ -5,7 +5,7 @@
    ```sh
    { 'currentLevel' : 
 	   { "up" : { 	'destinationLevel' : [Passenger 1,[Passenger 2].... ]},
-	    "down" : { 		'destinationLevel':[Passenger 1, [Passenger 2].... ] },		
+	    "down" : {  'destinationLevel':[Passenger 1, [Passenger 2].... ] },		
    } }
    ```
    
