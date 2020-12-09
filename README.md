@@ -14,7 +14,6 @@
     A Rule and Destination based Grouping  
   </p>
 </p>
-<img src="https://github.com/abhishekvispute/LIFT-Scheduling/blob/main/Flow.png" alt="Flow Diagram" ">
 
 
 <!-- TABLE OF CONTENTS -->
@@ -43,4 +42,6 @@
     <li><a href="https://github.com/abhishekvispute/LIFT-Scheduling/blob/main/Installation.md">Installation Instructions</a></li>
   </ol>
 </details>
+<img src="https://github.com/abhishekvispute/LIFT-Scheduling/blob/main/Flow.png" alt="Flow Diagram" ">
+
 
