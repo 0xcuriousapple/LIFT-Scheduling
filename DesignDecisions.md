@@ -19,14 +19,14 @@
    - decideDirectionOfLift() is a most imp function
    of the whole system, there we decide direction() on the basis of
    how many no of people are waiting to be served in that direction. </br>
-   now what this Data Structure allows us to do that in O(level).</br>
+   now this Data Structure allows us to do that in O(level).</br>
    ```sh 
    for (level in levelwise_situation)  
    direct access to level['up'].length and level['down'].length 
      ```
   
    
-    - when we want to give, priority to people when the lift arrives at that level, we can do that without extra effort as we have dedicated a list per level.
+    - When we want to give, priority to people when the lift arrives at that level, we can do that without extra effort as we have dedicated a list per level.
     ```sh 
    SortbyPriorityToDisabledPeople()
      ```
