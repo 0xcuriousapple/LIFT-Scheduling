@@ -37,8 +37,8 @@
         <li><a href="https://github.com/abhishekvispute/LIFT-Scheduling/tree/main/instructions/WithProrityToDisabledSafeChildern">Instructions with Rule 1 and 2</a></li>
       </ul>
     </li>
-    <li><a href="https://github.com/abhishekvispute/LIFT-Scheduling/blob/main/DesignConsiderations.md">Design Decision</a></li>
-    <li><a href="https://github.com/abhishekvispute/LIFT-Scheduling/blob/main/DesignDecisions.md">Design Considerations</a></li>
+    <li><a href="https://github.com/abhishekvispute/LIFT-Scheduling/blob/main/DesignConsiderations.md">Design Considerations</a></li>
+    <li><a href="https://github.com/abhishekvispute/LIFT-Scheduling/blob/main/DesignDecisions.md">Design Decisions</a></li>
     <li><a href="https://github.com/abhishekvispute/LIFT-Scheduling/blob/main/Installation.md">Installation Instructions</a></li>
   </ol>
 </details>
